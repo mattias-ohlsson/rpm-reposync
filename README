@@ -1,0 +1,12 @@
+        rpm-reposync - RPM Reposync
+
+RPM Reposync is used to synchronize a remote RPM repository to a local
+directory.
+
+USAGE
+
+    rpm-reposync SOURCE DESTINATION
+
+HISTORY
+
+    2021 – Originally written by Mattias Ohlsson (mattias.ohlsson@inprose.com).
