@@ -1,0 +1,65 @@
+#!/bin/bash
+# rpm-reposync
+# Version: 0.2
+#
+# Copyright (C) 2021  Mattias Ohlsson
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+
+set -e
+
+source=$1
+destination=$2
+
+tmp_dir=$(mktemp -d)
+echo "$0: $source"
+echo "$0: $destination"
+echo "$0: $dmp_dir"
+
+# Save repodata
+wget --directory-prefix="$tmp_dir" "$source/repodata/repomd.xml"
+if [ -f "$destination/repodata/repomd.xml" ]; then
+	source_revision=$(grep "<revision>" "$tmp_dir/repomd.xml" \
+	 | awk -F'<|>' '{ print $3 }')
+	destination_revision=$(grep "<revision>" "$destination/repodata/repomd.xml" \
+	 | awk -F'<|>' '{ print $3 }')
+
+	echo "$0: remomd source revision: $source_revision"
+	echo "$0: remomd destination revision: $destination_revision"
+
+	if [ "$source_revision" == "$destination_revision" ]; then
+		echo "$0: repomd revision in source and destionation: $source_revision"
+		exit
+	fi
+fi
+
+grep "<location href=" "$tmp_dir/repomd.xml" | cut -d'"' -f2 | while read u; do
+	wget --directory-prefix="$tmp_dir" "$source/$u"
+done
+
+# Save files
+zcat $tmp_dir/*-primary.xml.gz | grep "<location href=" | cut -d'"' -f2 | while read u; do
+	u_dirname=$(dirname $u)
+	wget --no-clobber --directory-prefix="$destination/$u_dirname" "$source/$u"
+done
+
+mkdir -p "$destination/repodata"
+rm -f "$destination/repodata/repomd.xml"
+find "$destination/repodata" -maxdepth 1 -name "*-*.xml.gz" -delete
+
+mv $tmp_dir/* "$destination/repodata/"
+
+# Cleanup
+rm -r "$tmp_dir"
